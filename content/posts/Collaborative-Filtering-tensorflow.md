@@ -6,7 +6,7 @@ markup: "markdown"
 author: "Safak Ozkan"
 ---
 
-# PREDICTION OF MOVIE RATINGS -- COLLABORATIVE FILTERING  
+# PREDICTION OF MOVIE RATINGS
 ---
 
 ## 1. Problem Description
