@@ -1,20 +1,19 @@
 ---
-date: 2017-11-22T15:49:35-08:00
+date: 2017-11-18T15:49:35-08:00
 draft: false
 title: "Collaborative Filtering with tensorflow"
 markup: "markdown"
 author: "Safak Ozkan"
 ---
 
-# PREDICTION OF MOVIE RATINGS
 ---
 
 ## 1. Problem Description
-We are given a rating matrix $R$ where only some of the entries $R_{ij}$ are provided; otherwise rest of them are missing. The task is to predict the missing entries. As in most Machine Learning problems the assumption here is that there's an underlying stationary pattern as to how users rate the movies.
+We are given a rating matrix $R$ where only a small fraction of the entries $R_{ij}$ are provided; otherwise the rest is missing. The task is to predict those missing entries. As in most Machine Learning problems the assumption here is that there's an underlying stationary pattern as to how users rate the movies.
 
 By the nature of the problem, $R$ is a sparse matrix, where the sparsity comes not from zero entries but from empty records. Therefor, we represent the training data in 3 columns: $i$: user ID , $j$: movie ID and $R_{ij}$: the rating .
 
-| $i$ | $j$   | $R\_{ij}$ |
+| $i$: user ID | $j$: movie ID   | $R_{ij}$: the rating |
 |:-----:|:------:|:-----:|
 | 0      |   14   | 3.5   |
 | 0      |  7305  | 4.0  |
@@ -33,7 +32,7 @@ By the nature of the problem, $R$ is a sparse matrix, where the sparsity comes n
 ---
 
 ## 2. Collaborative Filtering Model
-The terms *Collaborative Filtering*, *Matrix Factorization* and *Low-Rank Matrix Factorization* all refer to the same recommender system model. In essence, this model is based on the assumption that users who liked the same movies are likely to feel similarly towards other movies. The term *collaborative* refers to the observation that when a large set of users are involved in rating the movies, these users are effectively collaborating to get better movie ratings for everyone because every new rating will help the algorithm learn better features for the *users-movies* system. Later, these features are used by the model to make better rating predictions for everyone else.  
+The terms *Collaborative Filtering*, *Matrix Factorization* and *Low-Rank Matrix Factorization* all refer to the same recommender system model. In essence, this model is based on the assumption that users who liked the same movies are likely to feel similarly towards other movies. The term *collaborative* refers to the observation that when a large set of users are involved in rating the movies, these users are effectively collaborating to get better movie ratings for everyone because every new rating will help the algorithm learn better features for the *users-movies* system. Later, these features are used by the model to make better rating predictions for everyone.  
 
 The Collaborative Filtering Model can also be described as reconstructing a **low rank approximation** of matrix $R$ via its **Singular Value Decomposition** $R = U \cdot \Sigma \cdot V^T$. The low-rank reconstruction is achieved by only retaining the largest $k$ singular values, $R_k=U \cdot \Sigma_k \cdot V^T$.
 
@@ -54,7 +53,6 @@ $U$: user feature matrix
 $V$: movies feature matrix    
 
 <img src="/Drawing.png" alt="Drawing" width="1000" />
-
 
 Hence, we formulate the problem as an **optimization problem** and search for $U$ and $V$ by minimizing the following loss function $L$.    
 
@@ -80,6 +78,12 @@ Since no particular bounds are imposed on the entries in the embedding vectors $
 --- 
 ## 3. Lab41 movie ratings data
 - ratings were given at intervals of 0.5: {0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
+
+<img src="/fig1.png" alt="fig1" height="500" width="40" />
+<img src="/fig2.png" alt="fig2" height="500" width="40" />
+<img src="/fig3.png" alt="fig3" height="500" width="40" />
+<img src="/fig4.png" alt="fig4" height="500" width="40" />
+
 
 --- 
 
