@@ -8,10 +8,16 @@ author: "Safak Ozkan"
 
 ---
 
+<!-- ><p style="color:#cf494f">  $r_{ij}$   </p> -->
+
 ## 1. Problem Description
 We are given a rating matrix $R$ where only a small fraction of the entries $R_{ij}$ are provided; otherwise the rest is missing. The task is to predict those missing entries. As in most Machine Learning problems the assumption here is that there's an underlying stationary pattern as to how users rate the movies.
 
-By the nature of the problem, $R$ is a sparse matrix, where the sparsity comes not from zero entries but from empty records. Therefor, we represent the training data in 3 columns: $i$: user ID , $j$: movie ID and $R_{ij}$: the rating .
+By the nature of the problem, $R$ is a sparse matrix, where the sparsity comes not from zero entries but from empty records. Therefor, we represent the training data in 3 columns: $i$: user ID , $j$: movie ID and $R_{ij}$: the rating (see Table 1).    
+   
+
+<font size="+1"><strong><p align="center">Table 1. Ratings data in sparse format</p></strong></font>
+
 
 | $i$: user ID | $j$: movie ID   | $R_{ij}$: the rating |
 |:-----:|:------:|:-----:|
@@ -36,14 +42,14 @@ The terms *Collaborative Filtering*, *Matrix Factorization* and *Low-Rank Matrix
 
 The Collaborative Filtering Model can also be described as reconstructing a **low rank approximation** of matrix $R$ via its **Singular Value Decomposition** $R = U \cdot \Sigma \cdot V^T$. The low-rank reconstruction is achieved by only retaining the largest $k$ singular values, $R_k=U \cdot \Sigma_k \cdot V^T$.
 
-**Eckart-Young Theorem** states that if $R_k$ is the best rank-$k$ approximation of $R$, then it's necessary that   
-	
-1. $R_k$ minimizes the Frobenius norm $||R-R_k||_F^2$, and
-2. $R_k$ can be constructed by retaining only the largest $k$ singular values in the SVD formulation $R_k=U \cdot \Sigma\_k \cdot V^T$.
+**Eckart-Young Theorem** states that if $R_k$ is the best rank-$k$ approximation of $R$, then it's necessary that:  
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   1. $R_k$ minimizes the Frobenius norm $||R-R_k||_F^2$, and   
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   2. $R_k$ can be constructed by retaining only the largest $k$ singular values in the SVD formulation $R_k=U \cdot \Sigma\_k \cdot V^T$.
 
 We can further absorb the diagonal matrix $\Sigma\_k$ into $U$ and $V$ and express the factorization as a simple dot product between the feature matrices for users and movies.
  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $R\_{k(m \times n)} = U\_{(m \times k)} \cdot V\_{(k \times n)}^T$    
+<p align="center">$R_{k(m \times n)} = U_{(m \times k)} \cdot V_{(k \times n)}^T$</p>
 
 where, the parentheses indicate matrix size.  
 $m$: number of users ($m = 138493$)  
@@ -53,42 +59,56 @@ $U$: user feature matrix
 $V$: movies feature matrix    
 
 <img src="/Drawing.png" alt="Drawing" width="1000" />
+<font size="+1"><strong><p align="center">Figure 1. A conceptual sketch of the Ratings data matrix $R$ decomposed into its factors: user feature matrix, $U$, and movie feature matrix, $V$. Dots in the figure, $\cdot$, illustrate given values; and question marks, $?$, the missing values. Each entry $r_{ij}$ is expressed as a dot product of the user and movie embedding vectors $u_i$ and $v_j$, respectively.</strong></font>  
 
 Hence, we formulate the problem as an **optimization problem** and search for $U$ and $V$ by minimizing the following loss function $L$.    
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $argmin\_{\ U,V}\ L = ||R-U\cdot V^T||_F^2$.
+<p align="center">$argmin_{\ U,V}\ L = ||R - U \cdot V^T||_F^2$.</p>
 
-> *An important point to make is the Frobenius norm is only a partial summation computed over the entries in $R$ where a rating is provided. In the tensorflow implementation, we don't compute the complete matrix multiplication $U \cdot V^T$ but only the dot products of $u\_i \cdot v\_j^T$ where a rating $R\_{ij}$ is provided.*
+> *An important point to make is that the Frobenius norm is computed only as a partial summation over the entries in $R$ where a rating is provided.*
 
 The optimization procedure searches for the values of all entries in $U$ and $V$. There are $(m+n) \times k$ many tunable variables.
 
 The hyperparameter $k$ is to be chosen carefully by cross-validation. A small $k$ would not be enough to explain the pattern in the data adequately (*underfitting*), and too large a $k$ value would result in a model fitting on the random noise over the pattern (*overfitting*).
 
-> *It's a worth making a brief interpretation of the feature matrices $U$ and $V$. In the $k$-rank approximation scheme, each rating $R\_{ij}$ is expressed by the dot product $u\_i \cdot v\_j^T$ ---$i^{th}$ row of $U$ and $j^{th}$ row of $V$. The goal of our optimization routine is for the model to learn a* ***latent feature representation*** *(or alternatively an* ***embedding vector***) *for each user $u\_i$, and movie $v\_j$.  By the word latent, it's implied that the features are not explicitly defined by us nor they're clearly  interpretable. Each entry in the user and movie embedding vectors $u\_i$ and $v\_j$ corresponds to an abstract feature. These features can, for instance, be the genre of the movie, or how action-filled or dramatic, entertaining or romantic the movie is or anything that would help characterize how the users rate movies.*  
+> *It's worth making a brief interpretation of the feature matrices $U$ and $V$. In the $k$-rank approximation scheme, each rating $r\_{ij}$ is expressed by the dot product $u\_i \cdot v\_j^T$ (see Figure 1). The goal of our optimization routine is for the model to learn a* ***latent feature representation*** *(or alternatively an* ***embedding vector***) *for each user and movie.*   
 > \
-> *Hence, the dot product representation of the ratings $r\_{ij} = u\_i \cdot v\_j^T$ points to a linear combination of how much that feature is contained in the movie and how much that feature is favored by the user.*
+> *The term* ***latent*** *implies that the features are not explicitly defined by us nor they're definitively interpretable once the embeddings are learned by the model. Each entry in the embedding vectors $u\_i$ and $v\_j$ corresponds to the weight coefficient of an abstract feature. These features can specify the movie genre,  how action-filled or dramatic or any other distinguishing quality that would help characterize how the users rate movies. Hence, the dot product representation of the ratings $r\_{ij} = u\_i \cdot v\_j^T$ points to a* ***linear combination*** *of   
 > \
-> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $r\_{ij} = \sum\_{p=1}^k u\_{ip}v\_{jp}$
-
-##### N.B. Explicitly  Defining Biases is not Necessary
-We abstain from imposing **biases** by enforcing an extra component in $U$ and $V$ set to constant 1, since the embeddings are free to learn biases if necessary.
-
-Since no particular bounds are imposed on the entries in the embedding vectors $u\_{i}$ and $v\_{j}$. The model is free to learn positive or negative real numbers.  
-
---- 
-## 3. Lab41 movie ratings data
-- ratings were given at intervals of 0.5: {0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
-
-<img src="/fig1.png" alt="fig1" height="500" width="40" />
-<img src="/fig2.png" alt="fig2" height="500" width="40" />
-<img src="/fig3.png" alt="fig3" height="500" width="40" />
-<img src="/fig4.png" alt="fig4" height="500" width="40" />
+> &emsp;&emsp;&emsp; 1. how much that feature is contained in the movie, and    
+> &emsp;&emsp;&emsp; 2. how much that feature is favored by the user.*   
 
 
 --- 
+## 3. MovieLens 20M data
+- The collaborative filtering model is used to predict ratings of the [MovieLens dataset](https://grouplens.org/datasets/movielens/20m/).
+- ml-20m data set consists of 20000263 ratings from 138493 users on 27278 movies.
+- All ratings are given at intervals of 0.5:  
+{0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
+
+<div style="width:700 px">
+	<div style="float:left; width:300">
+		<img src="/fig1.png" alt="fig1" width="300" />
+	</div>
+	<div style="float:left; width:300">
+		<img src="/fig2.png" alt="fig2" width="300" />
+	</div>
+	<div style="float:left; width:300">
+		<img src="/fig3.png" alt="fig3" width="300" />
+	</div>
+	<div style="float:left; width:300">
+		<img src="/fig4.png" alt="fig4" width="300" />
+	</div>
+	<div style="clear:both"></div>
+</div>
+<br>
+<font size="+1"><b><p align="center">Figure 2. Histogram of *(a)* all ratings (*b*) user mean ratings \(*c*) movie mean ratings, and (*d*) 
+	number of ratings provided by users. Minimum number of ratings provided by a user is 20, and maximum is 9254 ratings.</b></font>  
+
+---   
 
 ## 4. Challenges in Developing the Model on `tensorflow`
-- A particular challenge in implementing a Matrix Factorization algorithm on `tensorflow` is that we can't naively pass `None` for the `shape` argument while declaring the input data tensors `R` and `R\_indices` as in `R = tf.placeholder(..., shape=(None))`. Since every rating `R[i,j]` is a function of only $2*k$ tunable variables. The `shape` parameter corresponds to how many ratings will make up a single batch in the SGD routine. To make the SGD work, I had to fix the `shape` of the `tf.placeholder` `R` and `R\_indices`  to `shape=(BATCH_SIZE, k)` instead of `shape=(None, k)`. This a small price to pay that allows me to use GPU computation and also backprop with symbolic differentiation, which gave me the flexibility to experiment in trying additional non-linear terms in the loss function without having the worry about the partial differentials with respect to the tunable variables.  
+- A particular challenge in implementing a Matrix Factorization algorithm on `tensorflow` is that we can't naively pass `None` for the `shape` argument while declaring the input data tensors `R` and `R_indices` as in `R = tf.placeholder(..., shape=(None))`. Since every rating `R[i,j]` is a function of only $2*k$ tunable variables. The `shape` parameter corresponds to how many ratings will make up a single batch in the SGD routine. To make the SGD work, I had to fix the `shape` of the `tf.placeholder` `R` and `R_indices`  to `shape=(BATCH_SIZE, k)` instead of `shape=(None, k)`. This a small price to pay that allows me to use GPU computation and also backprop with symbolic differentiation, which gave me the flexibility to experiment in trying additional non-linear terms in the loss function without having the worry about the partial differentials with respect to the tunable variables.  
 
 ```python
 R = tf.placeholder(dtype=tf.float32, shape=(BATCH_SIZE,))
@@ -122,6 +142,9 @@ def get_stacked_UV(R_indices, R, U, V, k, BATCH_SIZE):
 
 ## 5. Practical Methodology
 - Shuffling the data before splitting it into train, CV and test sets was crucial.
+- Explicitly  Defining Biases is not Necessary   
+We abstain from imposing **biases** by enforcing an extra component in $U$ and $V$ that's set to constant 1, since the embeddings are free to learn biases if necessary. 	
+- Since no particular bounds are imposed on the entries in the embedding vectors $u\_{i}$ and $v\_{j}$. The model is free to learn positive or negative real numbers.  
 
 ##### Splitting the Input Data:
 - Training Data takes up 64% of the input data, 
@@ -150,8 +173,7 @@ $$r\_{ij} = u\_{i} \cdot v\_{j}^T$$
 
 Here, each user feature vector $u\_i$ and movie feature vector $v\_j$ is of length $k$. and the classical matrix factorization multiplies $p^{th}$ feature of $u\_{i}$ with  $p^{th}$ feature of $v\_{j}$. Here, one can assume the feature $p$ corresponds to how much of a specific genre is present in movie $j$ and how much a user $i$ likes that specific genre. When the rating $y\_{ij}$ is modeled by a dot product between $u\_i$ and $v\_j$.   
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-**=> Linear Model: MAE (CV) = 0.6237**
+&emsp;&emsp;&emsp;&emsp;&emsp;**=> Linear Model: MAE (CV) = 0.6237**
 
 ## 9. Nonlinear Cross-Features:
 The rating prediction with cross-features 
@@ -160,7 +182,7 @@ $$r\_{ij} = u\_{i} \cdot v\_{j}^{T} + \sum\_{p=0}^{k}\sum\_{q=0}^{k} w\_{pq} (u\
 
 Here, we're multiplying $p^{th}$ feature of user $i$ with $q^{th}$ feature of movie $j$. This allows the model to learn cross interactions as, say, if a user likes the actor Tom Cruise (the $p^{th}$ feature--high  value for $u\_{ip}$), and she doesn't like dark and suspenseful thrillers ($q^{th}$ feature--low value for $u\_{iq}$), however, she likes the movie Eyes Wide Shut (even though it has a high value for $v\_{jq}$), because an underlying reason that makes her not like dark suspenseful movies perhaps disappears if Tom Cruise is in the movie. For a model to capture such a pattern, it has to allow some sort of **nonlinear interactions** between feature $p$ and feature $q$.  
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **=> Non-linear Model: MAE (CV) = 0.6150**
+&emsp;&emsp;&emsp;&emsp;&emsp;**=> Non-linear Model: MAE (CV) = 0.6150**
 
 ```
 R_pred = np.dot(U,V) + alpha1*(xft) + alpha2*(uv_sq)
