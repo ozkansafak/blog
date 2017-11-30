@@ -78,32 +78,40 @@ The hyperparameter $k$ is to be chosen carefully by cross-validation. A small $k
 > &emsp;&emsp;&emsp; 1. how much that feature is contained in the movie, and    
 > &emsp;&emsp;&emsp; 2. how much that feature is favored by the user.*   
 
+## 3. Practical Methodology  
 
---- 
-## 3. MovieLens 20M data
-- The collaborative filtering model is used to predict ratings of the [MovieLens dataset](https://grouplens.org/datasets/movielens/20m/).
-- ml-20m data set consists of 20000263 ratings from 138493 users on 27278 movies.
+##### MovieLens 20M dataset
+- [MovieLens dataset](https://grouplens.org/datasets/movielens/20m/) data set consists of 20,000,263 ratings from 138,493 users on 27,278 movies.
 - All ratings are given at intervals of 0.5:  
 {0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
+- Shuffling the data before splitting it into training, CV and test sets was crucial.
+- Splitting the Input Data:
+	- Training Data takes up 64% of the input data, 
+	- CV Data 16% and
+	- Test Data 20%.
+- We abstain from imposing a **bias term** by enforcing an extra component set to constant $1$ in $U$ and $V$, since the embeddings are free to learn biases if necessary.
+- Since no particular bounds are imposed on the entries in the embedding vectors $u\_{i}$ and $v\_{j}$. The model is free to learn positive or negative real numbers.  
 
 <div style="width:700 px">
-	<div style="float:left; width:300">
-		<img src="/fig1.png" alt="fig1" width="300" />
+	<div style="float:left; width:360">
+		<img src="/fig1.png" alt="fig1" width="360" />
 	</div>
 	<div style="float:left; width:300">
-		<img src="/fig2.png" alt="fig2" width="300" />
+		<img src="/fig2.png" alt="fig2" width="360" />
 	</div>
 	<div style="float:left; width:300">
-		<img src="/fig3.png" alt="fig3" width="300" />
+		<img src="/fig3.png" alt="fig3" width="360" />
 	</div>
 	<div style="float:left; width:300">
-		<img src="/fig4.png" alt="fig4" width="300" />
+		<img src="/fig4.png" alt="fig4" width="360" />
 	</div>
 	<div style="clear:both"></div>
 </div>
 <br>
-<font size="+1"><b><p align="center">Figure 2. Histogram of *(a)* all ratings (*b*) user mean ratings \(*c*) movie mean ratings, and (*d*) 
-	number of ratings provided by users. Minimum number of ratings provided by a user is 20, and maximum is 9254 ratings.</b></font>  
+<font size="+1"><b><p align="center">Figure 2. Histogram of (*a*) all ratings (*b*) user mean ratings \(*c*) movie mean ratings, and (*d*) 
+	number of ratings provided by users. Minimum number of ratings provided by a user is 20, and maximum is 9254 ratings.
+</p></b></font>  
+
 
 ---   
 
@@ -139,17 +147,6 @@ def get_stacked_UV(R_indices, R, U, V, k, BATCH_SIZE):
 ```
 
 ---
-
-## 5. Practical Methodology
-- Shuffling the data before splitting it into train, CV and test sets was crucial.
-- Explicitly  Defining Biases is not Necessary   
-We abstain from imposing **biases** by enforcing an extra component in $U$ and $V$ that's set to constant 1, since the embeddings are free to learn biases if necessary. 	
-- Since no particular bounds are imposed on the entries in the embedding vectors $u\_{i}$ and $v\_{j}$. The model is free to learn positive or negative real numbers.  
-
-##### Splitting the Input Data:
-- Training Data takes up 64% of the input data, 
-- CV Data 16% and
-- Test Data 20%.
 
 ## 7. Linear vs Non-linear features
 - `R_pred = tf.sigmoid(R_pred) * 5` dropped the `MAE_test` approximately from `.64` to `.62`. Firstly, I can't explain why sigmoid works better--although only by a tiny bit.
