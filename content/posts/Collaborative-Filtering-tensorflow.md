@@ -8,8 +8,6 @@ author: "Safak Ozkan"
 
 ---
 
-<!-- ><p style="color:#cf494f">  $r_{ij}$   </p> -->
-
 ## 1. Problem Description
 We are given a rating matrix $R$ where only a small fraction of the entries $R_{ij}$ are provided; otherwise the rest is missing. The task is to predict those missing entries. As in most Machine Learning problems the assumption here is that there's an underlying stationary pattern as to how users rate the movies.
 
@@ -59,21 +57,21 @@ $U$: user feature matrix
 $V$: movies feature matrix    
 
 <img src="/Drawing.png" alt="Drawing" width="1000" />
-<font size="+1"><strong><p align="center">Figure 1. A conceptual sketch of the Ratings data matrix $R$ decomposed into its factors: user feature matrix, $U$, and movie feature matrix, $V$. Dots in the figure, $\cdot$, illustrate given values; and question marks, $?$, the missing values. Each entry $r_{ij}$ is expressed as a dot product of the user and movie embedding vectors $u_i$ and $v_j$, respectively.</strong></font>  
+<font size="+1"><strong><p align="center">Figure 1. A conceptual sketch of the Ratings data matrix $R$ decomposed into its factors: user feature matrix, $U$, and movie feature matrix, $V$. Dots in the figure, $\cdot$, illustrate given values; and question marks, $?$, the missing values. Each entry $R_{ij}$ is expressed as a dot product of the user and movie embedding vectors $U_i$ and $V_j$, respectively.</strong></font>  
 
 Hence, we formulate the problem as an **optimization problem** and search for $U$ and $V$ by minimizing the following loss function $L$.    
 
 $$argmin_{\ U,V}\ L = ||R - U \cdot V^T||_F^2$$
 
-> *An important point to make is that the Frobenius norm is computed only as a partial summation over the entries in $R$ where a rating is provided.*
+> *It's important to note that the Frobenius norm is computed only as a partial summation over the entries in $R$ where a rating is provided.*
 
 The optimization procedure searches for the values of all entries in $U$ and $V$. There are $(m+n) \times k$ many tunable variables.
 
 The hyperparameter $k$ is to be chosen carefully by cross-validation. A small $k$ would not be enough to explain the pattern in the data adequately (*underfitting*), and too large a $k$ value would result in a model fitting on the random noise over the pattern (*overfitting*).
 
-> *It's worth making a brief interpretation of the feature matrices $U$ and $V$. In the $k$-rank approximation scheme, each rating $r\_{ij}$ is expressed by the dot product $u\_i \cdot v\_j^T$ (see Figure 1). The goal of our optimization routine is for the model to learn a* ***latent feature representation*** *(or alternatively an* ***embedding vector***) *for each user and movie.*   
+> *It's worth making a brief interpretation of the feature matrices $U$ and $V$. In the $k$-rank approximation scheme, each rating $R\_{ij}$ is expressed by the dot product $U\_i \cdot V\_j^T$ (see Figure 1). The goal of our optimization routine is for the model to learn a* ***latent feature representation*** *(or alternatively an* ***embedding vector***) *for each user and movie.*   
 > \
-> *The term* ***latent*** *implies that the features are not explicitly defined by us nor they're definitively interpretable once the embeddings are learned by the model. Each entry in the embedding vectors $u\_i$ and $v\_j$ corresponds to the weight coefficient of an abstract feature. These features can specify the movie genre,  how action-filled or dramatic or any other distinguishing quality that would help characterize how the users rate movies. Hence, the dot product representation of the ratings $r\_{ij} = u\_i \cdot v\_j^T$ points to a* ***linear combination*** *of   
+> *The term* ***latent*** *implies that the features are not explicitly defined by us nor they're definitively interpretable once the embeddings are learned by the model. Each entry in the embedding vectors $U\_i$ and $V\_j$ corresponds to the weight coefficient of an abstract feature. These features can specify the movie genre,  how action-filled or dramatic or any other distinguishing quality that would help characterize how the users rate movies. Hence, the dot product representation of the ratings $R\_{ij} = U\_i \cdot V\_j^T$ points to a* ***linear combination*** *of   
 > \
 > &emsp;&emsp;&emsp; 1. how much that feature is contained in the movie, and    
 > &emsp;&emsp;&emsp; 2. how much that feature is favored by the user.*   
@@ -90,7 +88,7 @@ The hyperparameter $k$ is to be chosen carefully by cross-validation. A small $k
 	- CV Data 16% and
 	- Test Data 20%.
 - We abstain from imposing a **bias term** by enforcing an extra component set to constant $1$ in $U$ and $V$, since the embeddings are free to learn biases if necessary.
-- Since no particular bounds are imposed on the entries in the embedding vectors $u\_{i}$ and $v\_{j}$. The model is free to learn positive or negative real numbers.  
+- Since no particular bounds are imposed on the entries in the embedding vectors $U\_{i}$ and $V\_{j}$. The model is free to learn positive or negative real numbers.  
 
 <div style="width:700 px">
 	<div style="float:left; width:360">
@@ -124,8 +122,8 @@ u_mean = tf.placeholder(dtype=tf.float32, shape=(BATCH_SIZE,1))
 v_mean = tf.placeholder(dtype=tf.float32, shape=(BATCH_SIZE,1)) 
 ```
 
-- At each SGD step a mini-batch of rating data $R_{ij}$ and the corresponding user-movie index pairs $(i,j)$ are fed into the computational graph. Since each $R\_{ij}$ is represented as the dot product $u_i \cdot v_j^T$, we have to stack the corresponding embedding vectors into 2-D tensors `U_stack` and `V_stack` where both `U_stack.getshape()` and `V_stack.getshape()` equal to `(BATCH_SIZE,k)`.   
-The implementation of stacking tensors `tensorflow` is a little trickier than in `numpy`, and it's implemented in the following `get_stacked_UV` module:  
+- At each SGD step a mini-batch of rating data $R_{ij}$ and the corresponding user-movie index pairs $(i,j)$ are fed into the computational graph. Since each $R\_{ij}$ is represented as the dot product $U_i \cdot V_j^T$, we have to stack the corresponding embedding vectors into 2-D tensors `U_stack` and `V_stack` where both `U_stack.getshape()` and `V_stack.getshape()` equal to `(BATCH_SIZE,k)`.   
+The implementation of stacking tensors  on`tensorflow` is a little trickier than in `numpy`. It's done like this:  
 ```python
 def get_stacked_UV(R_indices, R, U, V, k, BATCH_SIZE):
     u_idx = R_indices[:,0]
@@ -162,22 +160,22 @@ R_pred = tf.sigmoid(R_pred) * 5
 $$=> Linear\ Model: MAE (CV) = 0.6237$$
 
 - The rating prediction with cross-features:
-$$r\_{ij} = u\_{i} \cdot v\_{j}^{T} + \sum\_{p=0}^{k}\sum\_{q=0}^{k} w\_{pq} (u\_{ip} \cdot v\_{jq}^{T})$$
+$$R\_{ij} = U\_{i} \cdot V\_{j}^{T} + \sum\_{p=0}^{k}\sum\_{q=0}^{k} w\_{pq} (U\_{ip} \cdot V\_{jq}^{T})$$
 
-- Here, $p^{th}$ feature of user $i$ is getting multiplied with $q^{th}$ feature of movie $j$. This allows the model to learn cross interactions as, for instance, if a user likes the actor Tom Cruise (the $p^{th}$ feature--high  value for $u\_{ip}$), and she doesn't like dark and suspenseful thrillers ($q^{th}$ feature--low value for $u\_{iq}$), however, she likes the movie Eyes Wide Shut (even though it has a high value for $v\_{jq}$), because an underlying reason that makes her not like dark suspenseful movies perhaps disappears if Tom Cruise is in the movie. For a model to capture such a pattern, it has to allow some sort of **nonlinear cross interactions** between features $p$ and $q$.  
+- Here, feature $p$ of user $i$ is getting multiplied by feature $q$ of movie $j$. This allows the model to learn cross interactions as, for instance, if a user likes the actor Tom Cruise (that corresponds a high value for $U\_{ip}$), and she doesn't like dark and suspenseful thrillers ($q^{th}$ feature--low value for $U\_{iq}$), however, she likes the movie Eyes Wide Shut (even though it has a high value for $V\_{jq}$), perhaps because an underlying reason that makes her not like dark suspenseful movies perhaps disappears if Tom Cruise is in the movie. For a model to capture such a pattern, it has to allow some sort of **nonlinear cross feature interactions** between features $p$ and $q$.  
 $$=> Nonlinear\ Model: MAE (CV) = 0.6150$$
 ```
 R_pred = np.dot(U,V) + alpha1*(xft) + alpha2*(uv_sq)
 ```
 
 - The computational price paid for a mere 1% increas in mae rate is that the runtime for one epoch went from $31$ sec for pure linear model to $60$ sec when incorporating all 3 types of nonlinear feature crossings:  
-<p align="center">($u\_{ip}$ ~ $v\_{jq}$),&nbsp; ($u\_{ip}$ ~ $u\_{iq}$),&nbsp; ($v\_{jp}$ ~ $v\_{jq}$)</p>
+<p align="center">($U\_{ip}$ ~ $V\_{jq}$),&nbsp; ($U\_{ip}$ ~ $U\_{iq}$),&nbsp; ($V\_{jp}$ ~ $V\_{jq}$)</p>
 
 
 ## 7. Improvements on the Algorithm
-1. The regularization term needs to take into account the average rating for each user $u\_i$, $\mu_{u_i}$. 
+1. The regularization term needs to take into account the average rating for each user $U\_i$, $\mu_{U_i}$. 
 
-
+ 
 
 
 
