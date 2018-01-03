@@ -37,16 +37,17 @@ By the nature of the problem, $R$ is a sparse matrix, where the sparsity comes n
 
 ## 2. MovieLens 20M dataset
 
-- [MovieLens dataset](https://grouplens.org/datasets/movielens/20m/) data set consists of 20,000,263 ratings from 138,493 users on 27,278 movies. Ratings are provided for only $0.5\%$ of all possible entries in $R$.
+- [MovieLens dataset](https://grouplens.org/datasets/movielens/20m/) consists of 20,000,263 ratings from 138,493 users on 27,278 movies. Sparsity of the matrix $R$ is $0.5\%$ -- i.e. ratings are provided for only $0.5\%$ of all possible user-movie combinations.  
+
 - All ratings are given in the interval [0.5, 5.0] with increments of 0.5:  
 {0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
-- Since the input data was ordered according to user IDs, it was crucial to shuffle the data before splitting it into training, CV and test sets.
+
+- Since the input data was ordered according to user IDs, it was crucial to shuffle the data before splitting it into training, CV and test sets.  
+
 - The Input Data is split accordingly:
 	- $64\%$ -- training data,
 	- $16\%$ -- cross validation data,
 	- $20\%$ -- test data.
-- We abstain from imposing an explicit **bias term** in the feature vectors $U$ and $V$. In the Matrix Factorization scheme, the embeddings are free to learn biases if necessary.
-- Since no particular bounds are imposed on the entries in the feature vectors $U$ and $V$, the model is free to learn positive or negative real numbers as feature coefficients.  
 
 <div style="width:700 px">
 	<div style="float:left; width:360">
@@ -70,48 +71,58 @@ By the nature of the problem, $R$ is a sparse matrix, where the sparsity comes n
 
 
 ## 3. Matrix Factorization Model
-The terms  *Matrix Factorization*, *Low-Rank Matrix Factorization* and *Collaborative Filtering*  all refer to the same recommender system model in the context of the current problem.  In essence, this model is based on the assumption that users who liked the same movies are likely to feel similarly towards other movies.  The term *collaborative* refers to the observation that when a large set of users are involved in rating the movies, these users effectively collaborate to help the model  better predict the movie ratings for everyone because every new rating will help the algorithm learn better features for the complete user-movie system.   
+The *Collaborative Filtering* model used in this problem is based on *Matrix Factorization* (or *Low-Rank Matrix Factorization* -- which is only another name that refers to the same model).  In essence, this model takes only the past ratings as input to the model. That is, no user profile information nor any explicitly defined movie features are used to train the model.  The assumption here is that the users who liked the same movies are also likely to favor other but similar movies.   
 
-The Collaborative Filtering Model can also be described as reconstructing a **low rank approximation** of matrix $R$ via its **Singular Value Decomposition** $R = U \cdot \Sigma \cdot V^T$. The low-rank reconstruction is achieved by only retaining the largest $k$ singular values, $R\_k = U \cdot \Sigma\_k \cdot V^T$.
+The term *collaborative* refers to the observation that when a large set of users are involved in rating the movies, these users effectively collaborate to help the model  better predict the movie ratings for everyone because every new rating will help the algorithm learn better features for the complete user-movie system.   
+
+The Collaborative Filtering Model can also be described as reconstructing a **low rank approximation** of the matrix $R$ via its **Singular Value Decomposition** $R = U \cdot \Sigma \cdot V^T$. The low-rank reconstruction is achieved by only retaining the largest $k$ singular values, $R\_k = U \cdot \Sigma\_k \cdot V^T$.
 
 **Eckart-Young Theorem** states that if $R_k$ is the best rank-$k$ approximation of $R$, then it's necessary that:  
  
 &emsp;&emsp;&emsp;   1. $R\_k$ minimizes the Frobenius norm $||R - R\_k||\_F^2$ and   
 &emsp;&emsp;&emsp;   2. $R\_k$ can be constructed by retaining only the largest $k$ singular values in the diagonal matrix $\Sigma\_k$ of the SVD formulation.
 
-We can further absorb the diagonal matrix $\Sigma\_k$ into $U$ and $V$ and express the factorization as a simple dot product between the feature matrices for users and movies.
+We can further absorb the diagonal matrix $\Sigma\_k$ into $U$ and $V$ and express the factorization as a simple matrix multiplication of the feature matrices $U$ and $V$.
  
-<p align="center">$\hat{R}_{k(m \times n)} = U_{(m \times k)}^\ \cdot V_{(k \times n)}^T$</p>
+<p align="center">$R_{k(m \times n)} = U_{(m \times k)}^\ \cdot V_{(k \times n)}^T$</p>
 
-where, the parentheses indicate matrix size.  
+where,  
+the parentheses indicate matrix size,   
 $m$: number of users ($m = 138493$)  
 $n$: number of movies ($n = 27278$)  
-$k$: rank hyperparameter (typically $k \approx 10$).  
-$U$: user feature matrix  
+$k$: rank hyperparameter ($k \approx 10$).  
+$U$: users feature matrix  
 $V$: movies feature matrix    
 
 Hence, we can formulate the problem as an **optimization problem** minimizing the following loss function $L$ via SGD.         
 
-$$argmin_{\ U,V}\ L = ||R - \hat{R}||_F^2$$
+$$argmin_{\ U,V}\ L = ||R - R\_{k}||_F^2$$
 
-It's important to note that the Frobenius norm is computed only as a **partial summation** over the entries in $\hat{R}$ where a rating is provided---or equivalently over the list of ratings as shown in Table 1. The optimization procedure searches for the values of all entries in $U$ and $V$. There are $(m+n) \times k$ many such  tunable variables.   
+It's important to note that the Frobenius norm is computed only as a **partial summation** over the entries in $R$ wherever a rating is provided---or equivalently over the list of ratings as shown in Table 1. The optimization procedure searches for the values of all entries in $U$ and $V$. There are $(m+n) \times k$ many such  tunable variables.   
 
-The hyperparameter $k$ is to be chosen carefully by cross-validation. Too small a $k$ value would not be enough to explain the pattern in the data adequately (*underfitting*), and too large a $k$ value would result in a model fitting on the random noise over the pattern (*overfitting*).
+> *N.B.*: We abstain from imposing an explicit **bias term** in the feature vectors $U$ and $V$. In the Matrix Factorization scheme, the embeddings are free to learn biases if necessary. 
 
-It's worth making a brief interpretation of the feature matrices $U$ and $V$. In the $k$-rank approximation scheme, each rating $R\_{ij}$ is expressed as the dot product $U\_i^\ \cdot V\_j^T$ as shown in Figure 2. The goal of our optimization routine is for the model to learn a **latent feature vector** (or alternatively an **embedding vector**) for each user and movie.  The term *latent* implies that the features are not explicitly defined as a part of the model nor they can be interpreted definitively once the embeddings are learned. Each entry in $U_i$ and $V_j$ corresponds to the weight coefficient of an abstract feature. These features can specify the genre of the movie or how much action or drama contained in the movie or any other distinguishing quality that would help characterize how the users rate movies. Hence, the dot product representation of the ratings $R\_{ij} = U\_i^\ \cdot V\_j^T$ expresses a **linear combination** of   
 
-&emsp;&emsp;&emsp; 1. how much that feature is favored by the user-$i$, and   
-&emsp;&emsp;&emsp; 2. how much that feature is contained in the movie-$j$.      
+The hyperparameter $k$ is to be chosen by cross-validation. Too small a $k$ value would not be enough to explain the pattern in the data adequately (*underfitting*), and too large a $k$ value would result in a model that fits on the random noise over the pattern (*overfitting*).
+
+
+It's worth to make a brief interpretation of the feature matrices $U$ and $V$. In the $k$-rank approximation scheme, each rating $R\_{ij}$ is expressed as the dot product $U\_i^\ \cdot V\_j^T$ as shown in Figure 2. The goal of our optimization routine is for the model to learn a separate **latent feature vector** (or alternatively an **embedding vector**) for each user and movie.  The term *latent* implies that the features are not explicitly defined as a part of the model nor can they be interpreted definitively once the embeddings are learned.  Each entry in $U_i$ and $V_j$ corresponds to the weight coefficient of an abstract feature. These features may specify the genre of the movie, the class of actors in it, how much action or drama is contained in the movie or any other distinguishing quality that would help characterize how the users rate movies. Hence, the dot product representation of the ratings $\hat{R}\_{ij} = U\_i\ \cdot V\_j^T$ expresses a **linear combination** of   
+
+&emsp;&emsp;&emsp; 1. how strongly that specific feature is favored by the user-$i$, and   
+&emsp;&emsp;&emsp; 2. how much that specific feature is contained in the movie-$j$.      
+
+The terms $R_{k}$ and $\hat{R}$ are used interchangeably to refer to the low-rank matrix approximation of the original partially filled rating matrix $R$.  
 
 <img src="/R=UV^T.png" alt="R=UV^T" width="1000" />
-<font size="+1"><p align="center"><b>Figure 2. A conceptual sketch of the ratings matrix $R$ decomposed into its factors: user and movie feature matrices, $U$ and $V$. Dots in the figure "$\cdot$" illustrate rating values that are provided by users; and question marks "$?$" the missing values. Each entry $R\_{ij}$ is expressed as a dot product of the user and movie embedding vectors $U\_i$ and $V\_j$, respectively.</b></p></font>  
+<font size="+1"><p align="center"><b>Figure 2. A conceptual sketch of the ratings matrix $R$ decomposed into its factors: user and movie feature matrices, $U$ and $V$. The dots '$\cdot$' in the figure illustrate provided rating values; and question marks '$?$' the missing values. Each entry $R\_{ij}$ is expressed as a dot product of the user and movie embedding vectors $U\_i$ and $V\_j$, respectively.</b></p></font>  
+
 
 ---   
 
 ## 4. Linear, Nonlinear and Cross Features
 
 ##### Linear Terms:
--  Standard collaborative filtering model consists of the following linear term:
+-  The standard collaborative filtering model consists of only the following linear term:
 $$\hat{R}\_{ij} = (R\_{lin})\_{ij} = U\_{i}^\ \cdot V\_{j}^T$$
 In this dot product, $p^{th}$ feature coefficient of $U\_{i}$ is multiplied with the corresponding $p^{th}$ coefficient of $V\_{j}$. The contributions from each feature are added up into a total sum.
 
@@ -123,38 +134,36 @@ $$=> Linear\ Model: MAE (CV) = 0.622$$
 ##### Nonlinear Terms:
 - I experimented with adding a 2<sup>nd</sup> order term to the rating model:    
 $$(R\_{nl})\_{ij} = \sum\_{p=1}^k \Big[U\_{ip} V\_{jp}\Big]^2$$
-
-- However, the quadratic terms didn't result in any discernible reduction in the final error rate and it was not used in the final model.  
-$$+\sum\_{p=1}^{k}\sum\_{q=p+1}^{k} \Big[(X\_{UU})\_{pq}\ U\_{ip} U\_{jq}+ (X\_{VV})\_{pq}\ V\_{ip}  V\_{jq}\Big]$$
+\
+However, the quadratic terms didn't result in any discernible reduction in the final error rate and they were not used in the final model.  
 
 ##### Cross Feature Terms:
 - Cross feature terms introduce the following 2<sup>nd</sup> order nonlinearity to the rating model:  
 $$(R\_{xft})\_{ij} = \sum\_{p=1}^{k}\sum\_{q=1}^{k} (X\_{UV})\_{pq}\ U\_{ip} V\_{jq}$$
-where,  
-$(X\_{UV})\_{pq}$: user-movie cross feature coefficient between features $p$ and $q$,   
+where $(X\_{UV})\_{pq}$ is the user-movie cross feature coefficient,   
 \
-$X\_{UV}$ is of size $k \times k$. Its components are to be learned by the optimization routine. In the above term, feature-$p$ of $U\_i$ gets multiplied by feature-$q$ of $V\_j$ and the contribution to the rating $R\_{ij}$ is controlled by the cross feature coefficient $(X\_{UV})\_{pq}$.  
+$X\_{UV}$ is of size $k \times k$. Its components are to be learned by the optimization routine. In the above term, feature-$p$ of $U\_i$ gets multiplied by feature-$q$ of $V\_j$ and the contribution to the rating $R\_{ij}$ is controlled by the coefficient $(X\_{UV})\_{pq}$.  
 \
-- The interpretation of the cross feature term could be made as follows: if a user likes the actor Tom Cruise (a large value for $U\_{ip}$), but she doesn't like dark suspenseful movies (a small value for $U\_{iq}$), however, she likes the movie Eyes Wide Shut (even though it has a high value for $V\_{jq}$), because an underlying reason that makes her not like dark suspenseful movies perhaps vanishes if Tom Cruise is in the movie. For a model to capture such a pattern, it has to allow some sort of **nonlinear cross feature interactions** between features $p$ and $q$.   
+- The interpretation of the cross feature term could be made as follows: if a user likes the actor Tom Cruise (a large value for $U\_{ip}$), but she dislikes suspenseful movies (a negative value for $U\_{iq}$), however, she likes the movie Eyes Wide Shut (even though it has a high value for $V\_{jq}$), because an underlying reason that makes her not like dark suspenseful movies perhaps vanishes if Tom Cruise is in the movie. For a model to capture such a pattern, it has to allow some sort of **nonlinear cross feature interactions** between features $p$ and $q$.   
 
 - However, the gain in the addition of cross feature terms over the linear terms on the MAE Rate is a mere $1.5\%$:
 $$\hat{R} = R\_{lin} + R\_{xft}$$
 $$=> Nonlinear\ Cross\ Feature\ Model: MAE (CV) = 0.612$$ 
 
-- The computational price paid for a mere $2\%$ improvement in MAE Rate is that the runtime increased from $25\ sec/epoch$ to $38\ sec/epoch$ when incorporating the cross feature interaction  ($U\_{ip}$ ~ $V\_{jq}$).
+- The computational price paid for a mere $2\%$ improvement in MAE Rate is that the runtime increased from $25\ sec/epoch$ to $38\ sec/epoch$.
 
-- > I also experimented on adding two more cross feature terms as follows:  $(X\_{UU})\_{pq}\ U\_{ip} U\_{jq} + (X\_{VV})\_{pq}\ V\_{ip}  V\_{jq}$. Not surprisingly, this didn't produce any improvement in the final MAE Rate only caused a tiny bit of overfitting. The cross feature interaction between $U\_p$---$U\_q$ and $V\_p$---$V\_q$ can be learned by increasing $k$, as well.
+- I experimented on adding two more cross feature terms as follows:  $(X\_{UU})\_{pq}\ U\_{ip} U\_{jq} + (X\_{VV})\_{pq}\ V\_{ip}  V\_{jq}$. Not surprisingly, this didn't produce any improvement in the final MAE Rate but caused a little bit of overfitting. I suspect the cross feature interaction between $U\_p$---$U\_q$ and $V\_p$---$V\_q$ can be learned by increasing $k$, as well.
 \
-- > I also experimented on implementing a $k \times k$ separate cross feature tensor of size for each user. This produces a 3-dimensional tensor $X\_{UV}$ of size $m \times k \times k=$ 13,849,300 new tunable parameters instead of only $k \times k$ which is a mere 100.
+- It's possible however, not advised, to implement a separate cross feature coefficient tensor of size $k \times k$ for every single user. This would produce a 3-dimensional tensor $X\_{UV}$ of size $m \times k \times k=$ 13,849,300 new tunable parameters instead of only $k \times k$ which is a mere 100. 
 
 
 
 ---
 
 ## 5. Regularization
-An $L\_2$ regularization term applied naively on the feature vectors $U$ and $V$ would penalize all nonzero components. This would encourage the coefficients in $U$ and $V$ to be close to zero.  However, we would rather have the coefficients in $U$ and $V$ regress towards the mean rating of the corresponding user (or alternatively corresponding movie) instead of zero. And for the nonlinear cross feature terms I kept the regularization term naive to regress towards the value zero. 
+An $L\_2$ regularization term naively applied on the feature matrices $U$ and $V$ would penalize all nonzero components. This would encourage the coefficients in $U$ and $V$ to be close to zero.  However, we would rather have the coefficients in $U$ and $V$ regress towards the mean rating of the corresponding user or the movie. For the cross feature coefficients $X\_{UV}$, the regularization term is kept as is to have them regress towards zero. 
 
-In essence, we are imposing a penalty for any behavior that diverges from the average pattern.  In this spirit, I formulated the $L\_2$ regularization term as follows:
+In essence, we are imposing a penalty for any behavior that diverges from the average pattern.  In this spirit, the $L\_2$ regularization term is formulated as follows:
 
 
 $$\Omega\_{lin} = \sum\_{i=1}^m\ \Big(U_i - \mu\_{U_i} \Big)^2 +\sum\_{j=1}^n\ \Big(V_j - \mu\_{V_j}\ \Big)^2$$
@@ -172,8 +181,11 @@ reg = (tf.reduce_sum((stacked_U - stacked_u_mean)**2) +
        tf.reduce_sum((stacked_V - stacked_v_mean)**2) + 
        tf.reduce_sum(X_UV**2)) / (BATCH_SIZE*k)
 ```
+Eventually, with the addition of the regularization term and the cross feature term, the loss function becomes:
 
-However, regularization didn't improve the MAE Rate because of the over abundance of data which is already the best implicit regularizer than any other explicitly imposed regularization term.
+$$\hat{R} = R\_{lin} + R\_{xft} + \Omega\_{linear}  + \Omega\_{xft}$$
+
+However, regularization didn't improve the MAE Rate because of the over abundance of data which already serves as a good implicit regularizer.
 
 ---
 
@@ -188,7 +200,7 @@ u_mean = tf.placeholder(dtype=tf.float32, shape=(BATCH_SIZE,1))
 v_mean = tf.placeholder(dtype=tf.float32, shape=(BATCH_SIZE,1)) 
 ```
 
-- At each SGD step a mini-batch of ratings $R_{ij}$ and the corresponding user-movie index pairs $(i,j)$ are fed into the computational graph. In order to achieve this, we have to stack the corresponding embedding vectors into 2-D tensors `U_stack` and `V_stack` where both `U_stack.getshape()` and `V_stack.getshape()` equal to `(BATCH_SIZE,k)`.   
+- At each SGD step, a mini-batch of ratings $R_{ij}$ and the corresponding user-movie index pairs $(i,j)$ are fed into the computational graph. In order to achieve this, we have to stack the corresponding embedding vectors into 2-D tensors `U_stack` and `V_stack` where both `U_stack.getshape()` and `V_stack.getshape()` equal to `(BATCH_SIZE,k)`.   
 \
 The implementation of stacking tensors  on`tensorflow` is a little trickier than in `numpy`:
 
@@ -211,12 +223,12 @@ def get_stacked_UV(R_indices, R, U, V, k, BATCH_SIZE):
 ```
 
 ##### Initialization: 
-- The feature vectors $U$ and $V$ are initialized by sampling from a Gaussian Distribution with mean $\mu = \sqrt{ 3.5/k}$, and standard deviation $\sigma = 0.2$. For the cross feature vectors $X\_{UV}$, $X\_{UV}$ and $X\_{VV}$, the mean was chosen empirically by experimentation as $\mu = -1/k$ and standard deviation $\sigma = 0.2$.
+The feature matrices $U$ and $V$ are initialized by sampling from a Gaussian Distribution with mean $\mu = \sqrt{3.5/k}$, and standard deviation $\sigma = 0.2$. For the cross feature coefficient matrix $X\_{UV}$, the mean was chosen empirically as $\mu = -1/k$ and standard deviation $\sigma = 0.2$.
 
 ---
 
 ## Github Repo
-- Enjoy:
+Here's the link to the github repo:
 \
 https://github.com/ozkansafak/Matrix_Factorization
 
